@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+.uv/
+
+# Data files (large CSVs and NumPy arrays)
+data/*.csv
+data/*.npy
+
+# Results (generated, not source)
+reports/results/*.json
+reports/results/*.md
+
+# Env
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
