@@ -27,8 +27,8 @@ def _rand_ts() -> datetime:
     return datetime.fromtimestamp(ts, tz=timezone.utc)
 
 
-def customer_fields() -> dict:
-    """Return a dict of customer fields (excluding id)."""
+def customer_fields() -> tuple[dict, datetime]:
+    """Return a (dict, datetime) of customer fields (excluding id)."""
     global _email_counter
     _email_counter += 1
     created = _rand_ts()
@@ -37,7 +37,7 @@ def customer_fields() -> dict:
     local = _faker.user_name()
     domain = _faker.free_email_domain()
     email = f"{local}{_email_counter}@{domain}"
-    return {
+    fields = {
         "name": _faker.name(),
         "email": email,
         "phone": _faker.phone_number()[:30],
@@ -45,12 +45,13 @@ def customer_fields() -> dict:
         "created_at": created.isoformat(),
         "updated_at": created.isoformat(),
     }
+    return fields, created
 
 
-def account_fields() -> dict:
-    """Return a dict of account fields (excluding id and customer_id)."""
+def account_fields() -> tuple[dict, datetime]:
+    """Return a (dict, datetime) of account fields (excluding id and customer_id)."""
     opened = _rand_ts()
-    return {
+    fields = {
         "account_type": random.choice(ACCOUNT_TYPES),
         "balance": round(random.uniform(-10_000, 500_000), 2),
         "currency": random.choice(CURRENCIES),
@@ -58,3 +59,4 @@ def account_fields() -> dict:
         "opened_at": opened.isoformat(),
         "updated_at": opened.isoformat(),
     }
+    return fields, opened

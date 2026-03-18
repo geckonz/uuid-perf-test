@@ -1,6 +1,8 @@
 """Benchmark timing primitives."""
 
+import statistics
 import time
+from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Iterator
@@ -65,6 +67,44 @@ class BenchmarkTimer:
             elapsed_seconds=elapsed,
             records_per_second=rps,
         )
+
+
+def median_result(results: list[TimingResult]) -> TimingResult:
+    """Compute a TimingResult with the median elapsed time from multiple runs."""
+    if len(results) == 1:
+        return results[0]
+
+    elapsed_values = [r.elapsed_seconds for r in results]
+    med = statistics.median(elapsed_values)
+    count = results[0].record_count
+
+    return TimingResult(
+        test_name=results[0].test_name,
+        db_type=results[0].db_type,
+        uuid_version=results[0].uuid_version,
+        operation=results[0].operation,
+        record_count=count,
+        elapsed_seconds=med,
+        records_per_second=count / med if med > 0 else 0.0,
+        extra={
+            "iterations": len(results),
+            "all_elapsed_seconds": [round(e, 4) for e in elapsed_values],
+            "min_elapsed": round(min(elapsed_values), 4),
+            "max_elapsed": round(max(elapsed_values), 4),
+        },
+    )
+
+
+def medians_by_name(runs: list[list[TimingResult]]) -> list[TimingResult]:
+    """Group results from multiple runs by test_name and return median for each."""
+    by_name: dict[str, list[TimingResult]] = defaultdict(list)
+    name_order: list[str] = []
+    for run in runs:
+        for r in run:
+            by_name[r.test_name].append(r)
+            if r.test_name not in name_order:
+                name_order.append(r.test_name)
+    return [median_result(by_name[name]) for name in name_order]
 
 
 @contextmanager

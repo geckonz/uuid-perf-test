@@ -51,28 +51,35 @@ def _copy_csv(conn: psycopg.Connection, table: str, columns: list[str], csv_path
 
 
 def _rebuild_indexes(conn: psycopg.Connection, schema: str) -> dict[str, float]:
-    """Drop and recreate secondary indexes concurrently. Returns timing dict."""
+    """Drop and recreate secondary indexes concurrently. Returns timing dict.
+
+    Index names match those defined in the DDL (schema_v4.sql / schema_v7.sql)
+    so we don't create duplicates.
+    """
     timings: dict[str, float] = {}
 
+    # Extract version suffix from schema name (e.g. "bench_v4" → "v4")
+    version = schema.split("_", 1)[1]
+
     index_defs = {
-        f"{schema}_customers_email": (
-            f"CREATE UNIQUE INDEX CONCURRENTLY {schema}_customers_email_idx"
+        f"customers_{version}_email_idx": (
+            f"CREATE UNIQUE INDEX CONCURRENTLY customers_{version}_email_idx"
             f" ON {schema}.customers (email)"
         ),
-        f"{schema}_customers_created_at": (
-            f"CREATE INDEX CONCURRENTLY {schema}_customers_created_at_idx"
+        f"customers_{version}_created_at_idx": (
+            f"CREATE INDEX CONCURRENTLY customers_{version}_created_at_idx"
             f" ON {schema}.customers (created_at)"
         ),
-        f"{schema}_accounts_customer_id": (
-            f"CREATE INDEX CONCURRENTLY {schema}_accounts_customer_id_idx"
+        f"accounts_{version}_customer_id_idx": (
+            f"CREATE INDEX CONCURRENTLY accounts_{version}_customer_id_idx"
             f" ON {schema}.accounts (customer_id)"
         ),
-        f"{schema}_accounts_opened_at": (
-            f"CREATE INDEX CONCURRENTLY {schema}_accounts_opened_at_idx"
+        f"accounts_{version}_opened_at_idx": (
+            f"CREATE INDEX CONCURRENTLY accounts_{version}_opened_at_idx"
             f" ON {schema}.accounts (opened_at)"
         ),
-        f"{schema}_accounts_status": (
-            f"CREATE INDEX CONCURRENTLY {schema}_accounts_status_idx"
+        f"accounts_{version}_status_idx": (
+            f"CREATE INDEX CONCURRENTLY accounts_{version}_status_idx"
             f" ON {schema}.accounts (status)"
         ),
     }
@@ -80,13 +87,12 @@ def _rebuild_indexes(conn: psycopg.Connection, schema: str) -> dict[str, float]:
     # Drop existing secondary indexes (PK indexes are kept)
     with conn.cursor() as cur:
         for name in index_defs:
-            cur.execute(f"DROP INDEX IF EXISTS {schema}.{name}_idx")
+            cur.execute(f"DROP INDEX IF EXISTS {schema}.{name}")
     conn.commit()
 
     # Recreate each index (CONCURRENTLY cannot run inside a transaction)
     for name, ddl in index_defs.items():
         start = time.monotonic()
-        # CONCURRENTLY requires autocommit
         old_autocommit = conn.autocommit
         conn.autocommit = True
         try:

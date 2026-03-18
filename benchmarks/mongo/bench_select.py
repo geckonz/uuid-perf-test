@@ -92,6 +92,59 @@ def bench_lookup(
     return t.result
 
 
+def bench_id_range_query(
+    db: pymongo.database.Database,
+    prefix: str,
+    uuid_version: str,
+    window_hours: int,
+    label: str,
+) -> TimingResult:
+    """find() with _id range filter using UUID boundaries."""
+    col = db[f"{prefix}.customers"]
+
+    # Find approximate min/max dates via sample
+    pipeline = [
+        {"$group": {"_id": None, "min": {"$min": "$created_at"}, "max": {"$max": "$created_at"}}}
+    ]
+    agg = list(col.aggregate(pipeline))
+    if not agg:
+        return None
+    min_ts = agg[0]["min"]
+    max_ts = agg[0]["max"]
+    if isinstance(min_ts, str):
+        min_ts = datetime.fromisoformat(min_ts)
+    if isinstance(max_ts, str):
+        max_ts = datetime.fromisoformat(max_ts)
+    span = (max_ts - min_ts).total_seconds()
+    window_sec = window_hours * 3600
+
+    from generators.uuid_factory import new_uuid7, new_uuid4
+    uuid_fn = new_uuid7 if uuid_version == "v7" else new_uuid4
+
+    def _to_binary(u) -> bson.Binary:
+        return bson.Binary(u.bytes, subtype=4)
+
+    total_rows = 0
+    op = f"id_range_query_{label}"
+
+    with timed(op, "mongodb", uuid_version, f"id_range_{label}", 0) as t:
+        for _ in range(10):
+            offset_sec = random.uniform(0, max(0, span - window_sec))
+            start_ts = min_ts + timedelta(seconds=offset_sec)
+            end_ts = start_ts + timedelta(hours=window_hours)
+            
+            start_uid = _to_binary(uuid_fn(start_ts))
+            end_uid = _to_binary(uuid_fn(end_ts))
+            
+            cursor = col.find({"_id": {"$gte": start_uid, "$lt": end_uid}})
+            total_rows += len(list(cursor))
+
+    t.result.record_count = total_rows
+    if t.result.elapsed_seconds > 0:
+        t.result.records_per_second = total_rows / t.result.elapsed_seconds
+    return t.result
+
+
 def run(
     db: pymongo.database.Database,
     prefix: str,
@@ -105,17 +158,20 @@ def run(
     print(f"    → {r.elapsed_seconds:.2f}s ({r.records_per_second:,.0f} rps)")
     results.append(r)
 
-    print(f"  [select] {prefix} range query (1 hour window)...")
-    r = bench_range_query(db, prefix, uuid_version, 1, "1hr")
-    if r:
-        print(f"    → {r.elapsed_seconds:.2f}s ({r.record_count:,} docs returned)")
-        results.append(r)
-
-    print(f"  [select] {prefix} range query (1 day window)...")
+    print(f"  [select] {prefix} range query (created_at) (1 day window)...")
     r = bench_range_query(db, prefix, uuid_version, 24, "1day")
     if r:
         print(f"    → {r.elapsed_seconds:.2f}s ({r.record_count:,} docs returned)")
         results.append(r)
+
+    if uuid_version == "v7":
+        print(f"  [select] {prefix} range query (_id) (1 day window)...")
+        r = bench_id_range_query(db, prefix, uuid_version, 24, "1day")
+        if r:
+            print(f"    → {r.elapsed_seconds:.2f}s ({r.record_count:,} docs returned)")
+            results.append(r)
+    else:
+        print(f"  [select] {prefix} range query (_id) — skipped (v4 UUIDs are not time-ordered)")
 
     print(f"  [select] {prefix} lookup ({BENCH_JOIN_COUNT:,} account+customer pairs)...")
     r = bench_lookup(db, prefix, uuid_version)

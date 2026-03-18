@@ -28,8 +28,10 @@ def _insert_customers(
     )
     rows = []
     for _ in range(count):
-        uid_str = str(uuid_fn())
-        fields = customer_fields()
+        fields, ts = customer_fields()
+        uid = uuid_fn(ts)
+        
+        uid_str = str(uid)
         fields["email"] = f"{uid_str}@bench.test"  # avoid collision with loaded data
         rows.append((uid_str, *fields.values()))
 
@@ -58,10 +60,12 @@ def _insert_accounts(
 
     rows = []
     for _ in range(count):
-        fields = account_fields()
+        fields, ts = account_fields()
+        uid = uuid_fn(ts)
+            
         rows.append(
             (
-                str(uuid_fn()),
+                str(uid),
                 random.choice(sample_customer_ids),
                 fields["account_type"],
                 fields["balance"],

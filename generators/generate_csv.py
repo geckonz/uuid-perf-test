@@ -72,10 +72,12 @@ def generate_customers(
         writer = csv.DictWriter(f, fieldnames=CUSTOMER_FIELDNAMES)
         writer.writeheader()
         for i in range(num_customers):
-            uid = uuid_fn()
+            fields, ts = customer_fields()
+            uid = uuid_fn(ts)
+            
             uid_str = str(uid)
             uuid_strs.append(uid_str)
-            row = {"id": uid_str, **customer_fields()}
+            row = {"id": uid_str, **fields}
             writer.writerow(row)
             if (i + 1) % 100_000 == 0:
                 _progress(i + 1, num_customers, label, start)
@@ -111,8 +113,10 @@ def generate_accounts(
         for cust_idx, count in enumerate(account_counts):
             cust_id = customer_ids[cust_idx]
             for _ in range(count):
-                uid = uuid_fn()
-                row = {"id": str(uid), "customer_id": cust_id, **account_fields()}
+                fields, ts = account_fields()
+                uid = uuid_fn(ts)
+                
+                row = {"id": str(uid), "customer_id": cust_id, **fields}
                 writer.writerow(row)
                 written += 1
             if (cust_idx + 1) % 100_000 == 0:

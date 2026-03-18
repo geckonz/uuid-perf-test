@@ -28,6 +28,9 @@ ACCOUNT_DISTRIBUTION = {1: 0.60, 2: 0.30, 3: 0.08, 4: 0.02}
 POSTGRES_COPY_BATCH = 50_000
 MONGO_INSERT_BATCH = 10_000
 
+# Benchmark iterations (timed runs per benchmark; +1 warmup is always added)
+BENCH_ITERATIONS = 3
+
 # Benchmark iteration counts
 BENCH_INSERT_COUNT = 10_000
 BENCH_SELECT_COUNT = 100_000

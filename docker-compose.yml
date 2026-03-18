@@ -1,14 +1,13 @@
 services:
   postgres:
-    image: postgres:16
+    image: postgres:17
     container_name: uuid_bench_postgres
     shm_size: '2gb'
+    network_mode: host
     environment:
       POSTGRES_USER: bench
       POSTGRES_PASSWORD: bench
       POSTGRES_DB: bench
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     command: >
@@ -28,14 +27,16 @@ services:
       retries: 10
 
   mongodb:
-    image: mongo:7
+    image: mongo:8
     container_name: uuid_bench_mongo
-    ports:
-      - "27017:27017"
+    network_mode: host
+    environment:
+      - GLIBC_TUNABLES=glibc.cpu.x86_shstk=off
     volumes:
       - mongo_data:/data/db
     command: >
       mongod
+      --bind_ip_all
       --syncdelay 0
       --wiredTigerCacheSizeGB 2
     healthcheck:

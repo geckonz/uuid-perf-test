@@ -36,8 +36,9 @@ def _insert_customers(
 
     docs = []
     for _ in range(count):
-        uid = uuid_fn()
-        fields = customer_fields()
+        fields, ts = customer_fields()
+        uid = uuid_fn(ts)
+        
         fields["email"] = f"{uid}@bench.test"  # avoid collision with loaded data
         doc = _coerce_datetimes({"_id": _to_binary(uid), **fields})
         docs.append(doc)
@@ -61,11 +62,13 @@ def _insert_accounts(
 
     docs = []
     for _ in range(count):
-        fields = account_fields()
+        fields, ts = account_fields()
+        uid = uuid_fn(ts)
+            
         docs.append(
             _coerce_datetimes(
                 {
-                    "_id": _to_binary(uuid_fn()),
+                    "_id": _to_binary(uid),
                     "customer_id": random.choice(sample_customer_ids),
                     **fields,
                 }
