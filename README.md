@@ -1,8 +1,8 @@
 # UUID v4 vs v7 Performance Benchmark
 
 Empirical measurement of the performance difference between UUID v4 (random)
-and UUID v7 (time-ordered) as primary/foreign keys in PostgreSQL 16 and
-MongoDB 7, at 5 million customer + 7 million account record scale.
+and UUID v7 (time-ordered) as primary/foreign keys in PostgreSQL 17 and
+MongoDB 8, at 5 million customer + 7 million account record scale.
 
 **Why it matters:** UUID v7's monotonically increasing timestamp prefix means
 every insert appends to the rightmost B-tree leaf page. UUID v4's random
